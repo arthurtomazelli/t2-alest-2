@@ -18,6 +18,7 @@ public class App {
     private Map<String, Airplane> airplanes;
     private Map<String, Company> companies;
     private Map<String, Airport> airports;
+    private Map<String[], Integer> grau;
 
     public App() {
         in = new In();
@@ -25,23 +26,27 @@ public class App {
         airplanes = new HashMap<>();
         airports = new HashMap<>();
 
-        companies = populateMap("../resources/cias.csv", ";", companies, 0);
-        airplanes = populateMap("../resources/aeronaves.csv", ";", airplanes, 1);
-        airports = populateMap("../resources/aerodromos.csv", ";", airports, 2);
+        companies = populateMap("./resources/cias.csv", ";", companies, 0);
+        airplanes = populateMap("./resources/aeronaves.csv", ";", airplanes, 1);
+        airports = populateMap("./resources/aerodromos.csv", ";", airports, 2);
 
         // for (String icao : airplanes.keySet()) {
-        //     System.out.println(airplanes.get(icao));
+        // System.out.println(airplanes.get(icao));
         // }
 
         // for (String icao : companies.keySet()) {
-        //     System.out.println(companies.get(icao));
+        // System.out.println(companies.get(icao));
         // }
 
         graph = new WeightedTemporalDigraph();
-        flightList = in.readCSV("../resources/voos_mar2026.csv", ",");
+        flightList = in.readCSV("./resources/voos_mar2026.csv", ",");
 
         populateGraph(flightList, graph, formatter);
         System.out.println(graph.size());
+
+        grau = new HashMap<>();
+        calculateDegree();
+
     }
 
     public <T> Map<String, T> populateMap(String path, String splitChar, Map<String, T> map, int c) {
@@ -53,7 +58,7 @@ public class App {
                 for (String[] strings : list) {
                     if (strings[0] != "N/I") {
                         map.put(strings[0], (T) new Company(strings[0], strings[1], strings[2], strings[3]));
-                        if(cont == 0){
+                        if (cont == 0) {
                             System.out.println(map.keySet());
                         }
                         cont++;
@@ -67,7 +72,8 @@ public class App {
             }
             case 2 -> {
                 for (String[] strings : list) {
-                    map.put(strings[0], (T) new Airport(strings[0], strings[1], strings[2], strings[3], strings[4], strings[5], strings[6], strings[7], strings[8]));
+                    map.put(strings[0], (T) new Airport(strings[0], strings[1], strings[2], strings[3], strings[4],
+                            strings[5], strings[6], strings[7], strings[8]));
                 }
             }
         }
@@ -78,13 +84,34 @@ public class App {
     public void populateGraph(List<String[]> list, WeightedTemporalDigraph graph, DateTimeFormatter formatter) {
         for (int i = 1; i < list.size(); i++) {
             String[] strings = list.get(i);
-            LocalDateTime partida = LocalDateTime.parse(strings[2].replace("\"", ""), formatter);
-            LocalDateTime chegada = LocalDateTime.parse(strings[1].replace("\"", ""), formatter);
+            LocalDateTime departure = LocalDateTime.parse(strings[2].replace("\"", ""), formatter);
+            LocalDateTime arrival = LocalDateTime.parse(strings[1].replace("\"", ""), formatter);
 
-            long diferencaMinutos = (Duration.between(partida, chegada).toMinutes());
+            long diferencaMinutos = (Duration.between(departure, arrival).toMinutes());
 
             graph.addEdge(strings[10], strings[9], diferencaMinutos, strings[5], strings[7], strings[8]);
         }
     }
 
+    public void calculateDegree() {
+        for (String icao : graph.getGraph().keySet()) {
+            for (Edge edge : graph.getGraph().get(icao)) {
+                String[] chaves = { edge.getOrigin(), edge.getdestination() };
+                String[] chavesContrario = { edge.getdestination(), edge.getOrigin() };
+                //comparar CADA ORIGEM TIPO chaves[0] e chaves[1] com os separados É ISSO.
+                if (grau.keySet().contains(chaves)) {
+                    grau.put(chaves, grau.get(chaves) + 1);
+                }
+                if(grau.keySet().contains(chavesContrario)){
+                    grau.put(chavesContrario, grau.get(chaves) + 1);
+                } else{
+                    grau.put(chaves, 1);
+                }
+            }
+        }
+
+        for(String[] icaos : grau.keySet()){
+            System.out.println(icaos[0] + ", " +  icaos[1] + " - " + grau.get(icaos));
+        }
+    }
 }

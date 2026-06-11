@@ -14,8 +14,7 @@ public class In {
         String csvSplitBy = splitChar;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String header = br.readLine();
-            System.out.println("Linha pulada: [" + header + "]");
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] row = line.split(csvSplitBy);
                 data.add(row);

@@ -76,4 +76,8 @@ public class WeightedTemporalDigraph {
   public int size(){
     return totalEdges;
   }
+
+  public Map<String, List<Edge>> getGraph(){
+    return graph;
+  }
 }
