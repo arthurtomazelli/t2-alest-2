@@ -4,8 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class In{
-    public In() {}
+public class In {
+    public In() {
+    }
 
     public List<String[]> readCSV(String filePath, String splitChar) {
         List<String[]> data = new ArrayList<>();
@@ -13,6 +14,8 @@ public class In{
         String csvSplitBy = splitChar;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String header = br.readLine();
+            System.out.println("Linha pulada: [" + header + "]");
             while ((line = br.readLine()) != null) {
                 String[] row = line.split(csvSplitBy);
                 data.add(row);

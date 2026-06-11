@@ -28,4 +28,11 @@ public class Airplane {
     public String getCritical() {
         return critical;
     }
+
+    @Override
+    public String toString() {
+        return "Airplane [icao=" + icao + ", iata=" + iata + ", model=" + model + ", critical=" + critical + "]";
+    }
+
+    
 }

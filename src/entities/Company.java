@@ -25,4 +25,9 @@ public class Company {
     public String getCountry() {
         return country;
     }
+
+    @Override
+    public String toString() {
+        return "Company [icao=" + icao + ", iata=" + iata + ", name=" + name + ", country=" + country + "]";
+    }
 }
