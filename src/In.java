@@ -17,6 +17,11 @@ public class In {
             br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] row = line.split(csvSplitBy);
+
+                for(int i = 0; i < row.length; i++){
+                    row[i] = row[i].replace("\"", "");
+                }
+
                 data.add(row);
             }
         } catch (IOException e) {

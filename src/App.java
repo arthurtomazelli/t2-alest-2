@@ -2,11 +2,14 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import entities.Airplane;
 import entities.Airport;
@@ -20,9 +23,8 @@ public class App {
     private Map<String, Airplane> airplanes;
     private Map<String, Company> companies;
     private Map<String, Airport> airports;
-    private Map<List<String>, Integer> grau;
-    private Set<List<String>> keysToUse;
-    private List<List<String>> topFiveHubs;
+    private Map<String, Integer> grau;
+    private Map<String, Integer> topFiveHubs;
 
     public App() {
         in = new In();
@@ -34,25 +36,16 @@ public class App {
         airplanes = populateMap("../resources/aeronaves.csv", ";", airplanes, 1);
         airports = populateMap("../resources/aerodromos.csv", ";", airports, 2);
 
-        // for (String icao : airplanes.keySet()) {
-        // System.out.println(airplanes.get(icao));
-        // }
-
-        // for (String icao : companies.keySet()) {
-        // System.out.println(companies.get(icao));
-        // }
-
         graph = new WeightedTemporalDigraph();
         flightList = in.readCSV("../resources/voos_mar2026.csv", ",");
 
         populateGraph(flightList, graph, formatter);
         System.out.println(graph.size());
-
-        keysToUse = new HashSet<>();
-        populateSet(keysToUse);
-
+        
         grau = new HashMap<>();
-        calculateDegree();
+
+        calculateTotalDegree();
+        calculateTopFiveHubs();
     }
 
     @SuppressWarnings("unchecked")
@@ -63,7 +56,7 @@ public class App {
             case 0 -> {
                 int cont = 0;
                 for (String[] strings : list) {
-                    if (strings[0] != "N/I") {
+                    if (!strings[0].equals("N/I")) {
                         map.put(strings[0], (T) new Company(strings[0], strings[1], strings[2], strings[3]));
                         if (cont == 0) {
                             System.out.println(map.keySet());
@@ -89,66 +82,141 @@ public class App {
     }
 
     public void populateGraph(List<String[]> list, WeightedTemporalDigraph graph, DateTimeFormatter formatter) {
-        for (int i = 1; i < list.size(); i++) {
+        for (int i = 0; i < list.size(); i++) {
             String[] strings = list.get(i);
+
+            String origin = strings[10];
+            String destination = strings[9];
+            String flightNumber = strings[5];
+            String icaoCompany = strings[7];
+            String icaoPlane = strings[8];
+
             LocalDateTime departure = LocalDateTime.parse(strings[2].replace("\"", ""), formatter);
             LocalDateTime arrival = LocalDateTime.parse(strings[1].replace("\"", ""), formatter);
 
             long diferencaMinutos = (Duration.between(departure, arrival).toMinutes());
 
-            graph.addEdge(strings[10], strings[9], diferencaMinutos, strings[5], strings[7], strings[8]);
+            graph.addEdge(origin, destination, diferencaMinutos, flightNumber, icaoCompany, icaoPlane);
         }
     }
 
-    public void populateSet(Set<List<String>> keysToUse) {
-        for (String icao : graph.getGraph().keySet()) {
-            for (Edge edge : graph.getGraph().get(icao)) {
-                List<String> chaves = List.of(edge.getOrigin(), edge.getdestination());
+    /* public void calculateTotalDegree(){
+        Map<String, Integer> mapOriginDegree = new HashMap<>();
+        Map<String, Integer> mapDesinationDegree = new HashMap<>();
+        
+        for(Edge e : graph.getEdges()){
+            String origin = e.getOrigin();
+            String destination = e.getDestination();
 
-                keysToUse.add(chaves);
+            if(mapOriginDegree.get(origin) != null){
+                mapOriginDegree.put(origin, mapOriginDegree.get(origin) + 1);
+            } else{
+                mapOriginDegree.put(origin, 1);
+            }
+
+            if(mapDesinationDegree.get(destination) != null){
+                mapDesinationDegree.put(destination, mapDesinationDegree.get(destination) + 1);
+            } else{
+                mapDesinationDegree.put(destination, 1);
             }
         }
+
+        for(String s : airports.keySet()){
+            if(mapOriginDegree.get(s) == null){
+                grau.put(s, mapDesinationDegree.get(s));
+                //System.out.println(s + "como origin é null");
+                continue;
+            }
+
+            if(mapDesinationDegree.get(s) == null){
+                grau.put(s, mapOriginDegree.get(s));
+                //System.out.println(s + " como destination é null");
+                continue;
+            }
+
+            grau.put(s, mapOriginDegree.get(s) + mapDesinationDegree.get(s));
+        }
+
+        for(String s : grau.keySet()){
+            System.out.println(s + " -> " + grau.get(s));
+        }
+    } */
+
+    public void calculateTotalDegree() {
+        Map<String, Integer> mapOriginDegree = new HashMap<>();
+        Map<String, Integer> mapDestinationDegree = new HashMap<>();
+
+        for (Edge e : graph.getEdges()) {
+            String origin = e.getOrigin();
+            String destination = e.getDestination();
+
+            mapOriginDegree.put(origin, mapOriginDegree.getOrDefault(origin, 0) + 1);
+            mapDestinationDegree.put(destination, mapDestinationDegree.getOrDefault(destination, 0) + 1);
+        }
+
+        for (String airport : airports.keySet()) {
+            int originDegree = mapOriginDegree.getOrDefault(airport, 0);
+            int destinationDegree = mapDestinationDegree.getOrDefault(airport, 0);
+
+            if(airports.get(airport).getCountry().equals("BRASIL")) grau.put(airport, originDegree + destinationDegree);;
+        }
+
+        for (String airport : grau.keySet()) {
+            int grauValor = grau.get(airport);
+
+            if(grauValor == 0) continue;
+
+            System.out.println(airport + " -> " + grau.get(airport));
+        }
     }
 
-    public void calculateDegree() {
-        for (String icao : graph.getGraph().keySet()) {
-            for (Edge edge : graph.getGraph().get(icao)) {
-                List<String> chaves = List.of(edge.getOrigin(), edge.getdestination());
-                List<String> chavesContrario = List.of(edge.getdestination(), edge.getOrigin());
-
-                for (List<String> keys : keysToUse) {
-                    String chave0 = keys.get(0);
-                    String chave1 = keys.get(1);
-
-                    try {
-                        if (edge.getOrigin().equals(chave0) && edge.getdestination().equals(chave1)) {
-                            grau.put(chaves, grau.get(chaves) + 1);
-                        }
-                        if (edge.getOrigin().equals(chave1) && edge.getdestination().equals(chave0)) {
-                            grau.put(chavesContrario, grau.get(chavesContrario) + 1);
-                        }
-                    } catch (NullPointerException e) {
-                        grau.put(chaves, 1);
-                    }
-
+    /* public void calculateTopFiveHubs(){
+        List<String> topFive = new ArrayList<>(grau.keySet())
+            .subList(0, 5);
+    
+        for (String s : grau.keySet()) {
+            for(int i = 0; i < topFive.size(); i++){
+                if(grau.get(s) > grau.get(topFive.get(i))){
+                    topFive.remove(i);
+                    topFive.add(i, s);
+                    break;
                 }
             }
         }
-        for (List<String> keys : grau.keySet()) {
-            System.out.println(keys.get(0) + " -> " + keys.get(1) + " = " + grau.get(keys));
+
+        System.out.println("--------------------------");
+
+        for(String s : topFive){
+            System.out.println(s + " -> " + grau.get(s));
+        }
+    }
+ */
+    public void calculateTopFiveHubs(){
+    List<String> topFive = new ArrayList<>(grau.keySet());
+    topFive = topFive.subList(0, 5);
+
+    for (String s : grau.keySet()) {
+        if (topFive.contains(s)) continue;
+
+        int minIndex = 0;
+        for (int i = 1; i < topFive.size(); i++) {
+            if (grau.get(topFive.get(i)) < grau.get(topFive.get(minIndex))) {
+                minIndex = i;
+            }
         }
 
-        System.out.println("=============================================");
-
-        grau.entrySet()
-                .stream()
-                .sorted(Map.Entry.<List<String>, Integer>comparingByValue().reversed())
-                .limit(5)
-                .forEach(entry -> System.out.println(
-                        entry.getKey().get(0) + " -> " + entry.getKey().get(1) + " = " + entry.getValue()));
-
-        System.out.println("oieeee-------------------------");
-
+        if (grau.get(s) > grau.get(topFive.get(minIndex))) {
+            topFive.remove(minIndex);
+            topFive.add(minIndex, s);
+        }
     }
 
+    System.out.println("--------------------------");
+
+    topFive.sort((a, b) -> grau.get(b) - grau.get(a));
+
+    for(String s : topFive){
+        System.out.println(s + " -> " + grau.get(s));
+    }
+}
 }

@@ -20,7 +20,7 @@ public class Edge implements Comparable<Edge> {
         return origin;
     }
 
-    public String getdestination() {
+    public String getDestination() {
         return destination;
     }
 
