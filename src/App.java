@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,7 @@ public class App {
     private Map<String, Airport> airports;
     private Map<String, Integer> grau;
     private Map<String, Integer> topFiveHubs;
+    private Scanner sc = new Scanner(System.in);
 
     public App() {
         in = new In();
@@ -43,9 +45,11 @@ public class App {
         System.out.println(graph.size());
         
         grau = new HashMap<>();
+        topFiveHubs = new HashMap<>();
 
         calculateTotalDegree();
         calculateTopFiveHubs();
+        solicitarVoo();
     }
 
     @SuppressWarnings("unchecked")
@@ -91,56 +95,15 @@ public class App {
             String icaoCompany = strings[7];
             String icaoPlane = strings[8];
 
-            LocalDateTime departure = LocalDateTime.parse(strings[2].replace("\"", ""), formatter);
-            LocalDateTime arrival = LocalDateTime.parse(strings[1].replace("\"", ""), formatter);
+            LocalDateTime departure = parseDateTime(strings[2]);
+            LocalDateTime arrival = parseDateTime(strings[1]);
 
             long diferencaMinutos = (Duration.between(departure, arrival).toMinutes());
 
-            graph.addEdge(origin, destination, diferencaMinutos, flightNumber, icaoCompany, icaoPlane);
+            graph.addEdge(origin, destination, diferencaMinutos, flightNumber, icaoCompany, icaoPlane, departure, arrival);
         }
     }
 
-    /* public void calculateTotalDegree(){
-        Map<String, Integer> mapOriginDegree = new HashMap<>();
-        Map<String, Integer> mapDesinationDegree = new HashMap<>();
-        
-        for(Edge e : graph.getEdges()){
-            String origin = e.getOrigin();
-            String destination = e.getDestination();
-
-            if(mapOriginDegree.get(origin) != null){
-                mapOriginDegree.put(origin, mapOriginDegree.get(origin) + 1);
-            } else{
-                mapOriginDegree.put(origin, 1);
-            }
-
-            if(mapDesinationDegree.get(destination) != null){
-                mapDesinationDegree.put(destination, mapDesinationDegree.get(destination) + 1);
-            } else{
-                mapDesinationDegree.put(destination, 1);
-            }
-        }
-
-        for(String s : airports.keySet()){
-            if(mapOriginDegree.get(s) == null){
-                grau.put(s, mapDesinationDegree.get(s));
-                //System.out.println(s + "como origin é null");
-                continue;
-            }
-
-            if(mapDesinationDegree.get(s) == null){
-                grau.put(s, mapOriginDegree.get(s));
-                //System.out.println(s + " como destination é null");
-                continue;
-            }
-
-            grau.put(s, mapOriginDegree.get(s) + mapDesinationDegree.get(s));
-        }
-
-        for(String s : grau.keySet()){
-            System.out.println(s + " -> " + grau.get(s));
-        }
-    } */
 
     public void calculateTotalDegree() {
         Map<String, Integer> mapOriginDegree = new HashMap<>();
@@ -170,53 +133,91 @@ public class App {
         }
     }
 
-    /* public void calculateTopFiveHubs(){
-        List<String> topFive = new ArrayList<>(grau.keySet())
-            .subList(0, 5);
-    
+    public void calculateTopFiveHubs(){
+        List<String> topFive = new ArrayList<>(grau.keySet());
+        topFive = topFive.subList(0, 5);
+
         for (String s : grau.keySet()) {
-            for(int i = 0; i < topFive.size(); i++){
-                if(grau.get(s) > grau.get(topFive.get(i))){
-                    topFive.remove(i);
-                    topFive.add(i, s);
-                    break;
+            if (topFive.contains(s)) continue;
+
+            int minIndex = 0;
+            for (int i = 1; i < topFive.size(); i++) {
+                if (grau.get(topFive.get(i)) < grau.get(topFive.get(minIndex))) {
+                    minIndex = i;
                 }
+            }
+
+            if (grau.get(s) > grau.get(topFive.get(minIndex))) {
+                topFive.remove(minIndex);
+                topFive.add(minIndex, s);
             }
         }
 
         System.out.println("--------------------------");
 
+        topFive.sort((a, b) -> grau.get(b) - grau.get(a));
+
         for(String s : topFive){
+            topFiveHubs.put(s, grau.get(s));
             System.out.println(s + " -> " + grau.get(s));
         }
     }
- */
-    public void calculateTopFiveHubs(){
-    List<String> topFive = new ArrayList<>(grau.keySet());
-    topFive = topFive.subList(0, 5);
 
-    for (String s : grau.keySet()) {
-        if (topFive.contains(s)) continue;
+    public void solicitarVoo(){
+        System.out.print("Digite um aeroporto de origem (código ICAO): \n-> ");
+        String icaoOrigem = sc.nextLine();
+        
+        System.out.println();
+        
+        System.out.print("Digite um aeroporto de destino (código ICAO): \n-> ");
+        String icaoDestino = sc.nextLine();
 
-        int minIndex = 0;
-        for (int i = 1; i < topFive.size(); i++) {
-            if (grau.get(topFive.get(i)) < grau.get(topFive.get(minIndex))) {
-                minIndex = i;
+        System.out.println();
+        
+        System.out.print("Digite uma data e horário (dd/MM/yyyy HH:mm): \n-> ");
+        String dataString = sc.nextLine();
+        LocalDateTime data = parseDateTime(dataString); 
+
+        System.out.println("Deseja eliminar um dos 5 hubs principais (ver abaixo) (s/n): ");
+        
+        for(String s : topFiveHubs.keySet()){
+            System.out.println("- " + s);
+        }
+
+        System.out.print("-> ");
+        String escolha = sc.nextLine().toLowerCase();
+
+        System.out.println();
+
+        if(escolha.equals("s")){
+            System.out.print("Qual dos hubs você deseja eliminar? ");
+            String hubEliminado = sc.nextLine();
+
+            if(removeHub(hubEliminado)){
+                System.out.println("Hub " + hubEliminado + " removido com sucesso.");
+            } else {
+                System.out.println("Hub " + hubEliminado + " não existente.");
             }
         }
 
-        if (grau.get(s) > grau.get(topFive.get(minIndex))) {
-            topFive.remove(minIndex);
-            topFive.add(minIndex, s);
+        for(String s : topFiveHubs.keySet()){
+            System.out.println("- " + s);
         }
+
+        System.out.println();
     }
 
-    System.out.println("--------------------------");
+    public boolean removeHub(String hub){
+        if(topFiveHubs.containsKey(hub)){
+            topFiveHubs.remove(hub);
+            graph.removeFromList(hub);
+            return true;
+        }
 
-    topFive.sort((a, b) -> grau.get(b) - grau.get(a));
-
-    for(String s : topFive){
-        System.out.println(s + " -> " + grau.get(s));
+        return false;
     }
-}
-}
+
+    public LocalDateTime parseDateTime(String localDateTime){
+        return LocalDateTime.parse(localDateTime.replace("\"", ""), formatter);
+    }
+}   

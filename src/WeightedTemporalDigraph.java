@@ -1,3 +1,4 @@
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,8 +19,8 @@ public class WeightedTemporalDigraph {
     totalVertices = totalEdges = 0;
   }
 
-  public void addEdge(String origin, String destination, double weight, String flightNumber, String icaoCompany, String icaoPlane) {
-    Edge e = new Edge(origin, destination, weight, flightNumber, icaoCompany, icaoPlane);
+  public void addEdge(String origin, String destination, double weight, String flightNumber, String icaoCompany, String icaoPlane, LocalDateTime originDateTime, LocalDateTime destinationDateTime) {
+    Edge e = new Edge(origin, destination, weight, flightNumber, icaoCompany, icaoPlane, originDateTime, destinationDateTime);
     addToList(origin, e);
     if (!vertices.contains(origin)) {
       vertices.add(origin);
@@ -72,6 +73,29 @@ public class WeightedTemporalDigraph {
     list.add(e);
     graph.put(v, list);
     return list;
+  }
+
+  public boolean removeFromList(String hub){
+    if(graph.containsKey(hub)){
+      graph.remove(hub);
+      vertices.remove(hub);
+      totalVertices--;
+
+      for (List<Edge> list : graph.values()) {
+        for (int j = 0; j < list.size(); j++) {
+          Edge edge = list.get(j);
+          if (edge.getDestination().equals(hub)) {
+            list.remove(j);
+            totalEdges--;
+            j--;
+          }
+        }
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   public int size(){
