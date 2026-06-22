@@ -1,3 +1,5 @@
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -6,11 +8,13 @@ public class DijkstraSP {
 
     private Map<String, Double> distTo;
     private Map<String, Edge> edgeTo;
+    private Map<String, LocalDateTime> arrivalTime;
     private IndexMinHeap<String, Double> pq;
 
-    public DijkstraSP(WeightedTemporalDigraph g, String s) {
+    public DijkstraSP(WeightedTemporalDigraph g, String origem, LocalDateTime horarioInicial, Map<String,Integer> hubs) {
         distTo = new HashMap<>();
         edgeTo = new HashMap<>();
+        arrivalTime = new HashMap<>();
         pq = new IndexMinHeap<>();
 
         // Inicializa todas as distâncias com infinito,
@@ -18,41 +22,58 @@ public class DijkstraSP {
         for(String v: g.getVerts())
             distTo.put(v, Double.POSITIVE_INFINITY);
         // Distância do início até o início é... zero
-        distTo.put(s, 0.0);
-        dijkstra(g, s);
+        arrivalTime.put(origem, horarioInicial);
+        distTo.put(origem, 0.0);
+        dijkstra(g, origem, hubs);
     }
 
-    private void dijkstra(EdgeWeightedGraph g, String s)
+    private void dijkstra(WeightedTemporalDigraph g,  String origem, Map<String,Integer> hubs)
     {
-        pq.insert(s, distTo.get(s)); // distTo.get(s) ==> 0.0
+        pq.insert(origem, distTo.get(origem)); // distTo.get(s) ==> 0.0
         // Enquanto houver algum vértice na fila...
         while(!pq.isEmpty()) {
             // Retira o vértice com menor distância total
             String v = pq.delMin();
             // E "relaxa" todas as arestas a partir dele
             for(Edge e: g.getAdj(v)) {
-                relax(e);
+                relax(e, origem, hubs);
             }
         }        
     }
 
-    private void relax(Edge e) {
-        String v = e.getV();
-        String w = e.getW();
-        // Custo acumulado de v até w
-        double dist = distTo.get(v) + e.getWeight();
+    private void relax(Edge e, String origem, Map<String,Integer> hubs) {
+        String originIcao = e.getOrigin();
+        String destinationIcao = e.getDestination();
+        LocalDateTime chegadaAtual = arrivalTime.get(originIcao);
+        if (chegadaAtual == null) {
+            return;
+        }   
+        int waitTime = 45;
+        if (hubs.containsKey(originIcao)) {
+            waitTime = 60;
+        }
+        if (originIcao.equals(origem)) {
+            waitTime = 0;
+        }
+        LocalDateTime horarioMinimo = chegadaAtual.plusMinutes(waitTime);
+        if(e.getOriginDateTime().isBefore(horarioMinimo)){
+            return;
+        }
+        double espera = Duration.between(chegadaAtual, e.getOriginDateTime()).toMinutes();
+        double dist = distTo.get(originIcao) + espera + e.getWeight();
         // Se o custo for menor do que o atual para w...
-        if(distTo.get(w) > dist) {
+        if(distTo.get(destinationIcao) > dist) {
             // ...significa que achamos um caminho melhor
-            distTo.put(w, dist);
-            edgeTo.put(w, e);
-            if(pq.contains(w))
+            distTo.put(destinationIcao, dist);
+            edgeTo.put(destinationIcao, e);
+            arrivalTime.put(destinationIcao, e.getDestinationDateTime());
+            if(pq.contains(destinationIcao))
                 // Já existe na pq, então reduz o peso (distância)
                 // e faz "swim" (se necessário)
-                pq.decreaseValue(w, dist);
+                pq.decreaseValue(destinationIcao, dist);
             else
                 // Não existe na pq, então insere
-                pq.insert(w, dist);
+                pq.insert(destinationIcao, dist);
         }
     }
 
@@ -74,25 +95,24 @@ public class DijkstraSP {
             path.addFirst(e);
             // A próxima aresta é aquela que vem de V (início desta aresta)
             // (lembrando: estamos percorrendo ao CONTRÁRIO)
-            e = edgeTo.get(e.getV());
+            e = edgeTo.get(e.getOrigin());
         }
         return path;
     }
 
-    public static void main(String[] args) {
-        EdgeWeightedDigraph g = new EdgeWeightedDigraph("exemplos/tinyEWD.txt");
-        DijkstraSP dij = new DijkstraSP(g, "0");
-        for(String v: g.getVerts()) {
-            System.err.print(v+": ");
-            if(!dij.hasPathTo(v)) {
-                System.out.println("SEM CAMINHO");
-            }
-            else {
-                for(Edge e: dij.pathTo(v)) {
-                    System.out.print(e+" ");
-                }
-                System.out.println("-> "+dij.distTo(v));
-            }
-        }
-    }
+    // public static void teste(WeightedTemporalDigraph g, String origem, LocalDateTime horarioInicial, Map<String,Integer> hubs) {
+    //     DijkstraSP dij = new DijkstraSP(g, "0", horarioInicial, hubs);
+    //     for(String v: g.getVerts()) {
+    //         System.err.print(v+": ");
+    //         if(!dij.hasPathTo(v)) {
+    //             System.out.println("SEM CAMINHO");
+    //         }
+    //         else {
+    //             for(Edge e: dij.pathTo(v)) {
+    //                 System.out.print(e+" ");
+    //             }
+    //             System.out.println("-> "+dij.distTo(v));
+    //         }
+    //     }
+    // }
 }

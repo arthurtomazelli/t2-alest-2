@@ -2,15 +2,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import entities.Airplane;
 import entities.Airport;
@@ -34,12 +29,16 @@ public class App {
         airplanes = new HashMap<>();
         airports = new HashMap<>();
 
-        companies = populateMap("../resources/cias.csv", ";", companies, 0);
-        airplanes = populateMap("../resources/aeronaves.csv", ";", airplanes, 1);
-        airports = populateMap("../resources/aerodromos.csv", ";", airports, 2);
+        // companies = populateMap("../resources/cias.csv", ";", companies, 0);
+        // airplanes = populateMap("../resources/aeronaves.csv", ";", airplanes, 1);
+        // airports = populateMap("../resources/aerodromos.csv", ";", airports, 2);
+
+        companies = populateMap("./resources/cias.csv", ";", companies, 0);
+        airplanes = populateMap("./resources/aeronaves.csv", ";", airplanes, 1);
+        airports = populateMap("./resources/aerodromos.csv", ";", airports, 2);
 
         graph = new WeightedTemporalDigraph();
-        flightList = in.readCSV("../resources/voos_mar2026.csv", ",");
+        flightList = in.readCSV("./resources/voos_mar2026.csv", ",");
 
         populateGraph(flightList, graph, formatter);
         System.out.println(graph.size());
@@ -166,17 +165,31 @@ public class App {
     public void solicitarVoo(){
         System.out.print("Digite um aeroporto de origem (código ICAO): \n-> ");
         String icaoOrigem = sc.nextLine();
+        if (!grau.keySet().contains(icaoOrigem)) {
+            System.out.println("ICAO não encontrado");
+            return;
+        }
         
         System.out.println();
         
         System.out.print("Digite um aeroporto de destino (código ICAO): \n-> ");
         String icaoDestino = sc.nextLine();
+        if (!grau.keySet().contains(icaoDestino)) {
+            System.out.println("ICAO não encontrado");
+        }
 
         System.out.println();
         
         System.out.print("Digite uma data e horário (dd/MM/yyyy HH:mm): \n-> ");
         String dataString = sc.nextLine();
-        LocalDateTime data = parseDateTime(dataString); 
+        LocalDateTime data;
+        try {
+            data = parseDateTime(dataString); 
+        } catch (Exception e) {
+            System.out.println("Data inválida");
+            return;
+        }
+        
 
         System.out.println("Deseja eliminar um dos 5 hubs principais (ver abaixo) (s/n): ");
         
@@ -200,9 +213,25 @@ public class App {
             }
         }
 
-        for(String s : topFiveHubs.keySet()){
-            System.out.println("- " + s);
+        DijkstraSP dij = new DijkstraSP(graph, icaoOrigem, data, topFiveHubs);
+
+        if (dij.hasPathTo(icaoDestino)) {
+
+            System.out.println("Menor rota:");
+
+            for (Edge e : dij.pathTo(icaoDestino)) {
+                System.out.println(e.getOrigin() +  " -> " + e.getDestination() + ": " + e.getOriginDateTime().format(formatter));
+            }
+
+            System.out.println("Custo total: " + dij.distTo(icaoDestino));
+
+        } else {
+            System.out.println("SEM CAMINHO");
         }
+
+        // for(String s : topFiveHubs.keySet()){
+        //     System.out.println("- " + s);
+        // }
 
         System.out.println();
     }
@@ -220,4 +249,5 @@ public class App {
     public LocalDateTime parseDateTime(String localDateTime){
         return LocalDateTime.parse(localDateTime.replace("\"", ""), formatter);
     }
+
 }   
