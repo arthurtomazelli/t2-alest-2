@@ -34,5 +34,8 @@ public class Airplane {
         return "Airplane [icao=" + icao + ", iata=" + iata + ", model=" + model + ", critical=" + critical + "]";
     }
 
-    
+    public String print() {
+        return icao + " - " + model;
+    }
+
 }

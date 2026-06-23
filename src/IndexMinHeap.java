@@ -4,43 +4,26 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class IndexMinHeap<Key, Value extends Comparable<Value>> {
-
-  // Armazena um valor e a posição da chave correspondente no vetor
   private class ValuePos {
     public ValuePos(Value v, int p) { this.value = v; this.pos =p; }
     public Value value;
     public int pos;
   }
 
-  private Key[] pq; // itens armazenados nas posic. 1 a n
+  private Key[] pq; 
   private Map<Key, ValuePos> dic;
-  private int n; // qtd de itens
+  private int n; 
 
-  /**
-   * Inicializa uma heap vazia com determinada capacidade
-   *
-   * @param initCapacity a capacidade inicial deste heap
-   */
   public IndexMinHeap(int initCapacity) {
     pq = (Key[]) new Object[initCapacity + 1];
     dic = new HashMap<>();
     n = 0;
   }
 
-  /**
-   * Inicializa um heap vazio
-   */
   public IndexMinHeap() {
     this(1);
   }
 
-  /**
-   * Inicializa um heap a partir do array de chaves e valores
-   * <p>
-   * Tempo O(n) - n sendo o total de chaves
-   *
-   * @param keys o array de chaves
-   */
   public IndexMinHeap(Key[] keys, Value[] values) {
     n = keys.length;
     pq = (Key[]) new Object[keys.length + 1];
@@ -53,38 +36,20 @@ public class IndexMinHeap<Key, Value extends Comparable<Value>> {
       sink(k);
   }
 
-  /**
-   * Retorna true se heap estiver vazio
-   *
-   * @return {@code true} se heap estiver vazio
-   *         {@code false} caso contrário
-   */
   public boolean isEmpty() {
     return n == 0;
   }
 
-  /**
-   * Retorna total de chaves neste heap
-   *
-   * @return o total de chaves neste heap
-   */
   public int size() {
     return n;
   }
 
-  /**
-   * REtorna a menor chave neste heap
-   *
-   * @return menor chave neste heap
-   * @throws NoSuchElementException se o heap estiver vazio
-   */
   public Key min() {
     if (isEmpty())
       throw new NoSuchElementException("Heap vazio!");
     return pq[1];
   }
 
-  // Método auxiliar para dobrar o tamanho do heap
   private void resize(int capacity) {
     assert capacity > n;
     Key[] temp = (Key[]) new Object[capacity];
@@ -97,35 +62,22 @@ public class IndexMinHeap<Key, Value extends Comparable<Value>> {
     dic = newdic;
   }
 
-  /**
-   * Adiciona uma nova chave a este heap
-   *
-   * @param x a chave a ser adicionada ao heap
-   */
   public void insert(Key x, Value v) {
-    // duplica o tamanho do array se necessário
     if (n == pq.length - 1)
       resize(2 * pq.length);
 
-    // adiciona x e faz swim para manter propriedade de ordem parcial
     pq[++n] = x;
     dic.put(x,new ValuePos(v, n));
     swim(n);
   }
 
-  /**
-   * Remove e retorna a menor chave neste heap
-   *
-   * @return menor chave no heap
-   * @throws NoSuchElementException se o heap estiver vazio
-   */
   public Key delMin() {
     if (isEmpty())
       throw new NoSuchElementException("Heap vazio!");
     Key min = pq[1];
     exch(1, n--);
     sink(1);
-    pq[n + 1] = null; // para ajudar a garbage collection
+    pq[n + 1] = null; 
     dic.remove(min);
     if ((n > 0) && (n == (pq.length - 1) / 4))
       resize(pq.length / 2);
@@ -136,23 +88,12 @@ public class IndexMinHeap<Key, Value extends Comparable<Value>> {
     return dic.containsKey(k);
   }
 
-  /**
-   * Diminui o valor associado à chave especificada
-   *
-   * @param  k a chave cujo valor deve ser reduzido
-   * @param  v o novo valor a ser associado à chave
-   * @throws NoSuchElementException chave inexistente
-  */
   public void decreaseValue(Key k, Value v) {
     if (!contains(k)) throw new NoSuchElementException("Chave não existe");
     ValuePos vp = dic.get(k);
     vp.value = v;
     swim(vp.pos);
   }
-
-  /***************************************************************************
-   * Métodos auxiliares
-   ***************************************************************************/
 
   private void swim(int k) {
     while (k > 1 && greater(k / 2, k)) {
@@ -173,14 +114,10 @@ public class IndexMinHeap<Key, Value extends Comparable<Value>> {
     }
   }
 
-  /***************************************************************************
-   * Métodos auxiliares para comparação e troca
-   ***************************************************************************/
   private boolean greater(int i, int j) {
     ValuePos vp1 = dic.get(pq[i]);
     ValuePos vp2 = dic.get(pq[j]);
     return vp1.value.compareTo(vp2.value) >  0;
-    //return ((Comparable<Key>) pq[i]).compareTo(pq[j]) > 0;
   }
 
   private void exch(int i, int j) {

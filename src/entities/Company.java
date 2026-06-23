@@ -30,4 +30,8 @@ public class Company {
     public String toString() {
         return "Company [icao=" + icao + ", iata=" + iata + ", name=" + name + ", country=" + country + "]";
     }
+    
+    public String print() {
+        return icao + " - " + name + " (" + country + ")";
+    }
 }
