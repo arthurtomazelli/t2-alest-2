@@ -1,6 +1,6 @@
 package entities;
 
-public class Company {
+public class Company implements Printable{
     private String icao;
     private String iata;
     private String name;

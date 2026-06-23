@@ -40,26 +40,23 @@ public class DijkstraSP {
         String originIcao = e.getOrigin();
         String destinationIcao = e.getDestination();
 
-        // Horário em que chegamos ao aeroporto de origem desta aresta
         LocalDateTime chegadaNoOrigem = arrivalTime.get(originIcao);
-        if (chegadaNoOrigem == null) return; // origem ainda não foi atingida
+        if (chegadaNoOrigem == null) return; 
 
         int waitTime = 45;
         if (hubs.containsKey(originIcao)) waitTime = 60;
         if (originIcao.equals(origem)) waitTime = 0;
 
-        // O voo precisa partir DEPOIS que chegamos + tempo mínimo de espera
         LocalDateTime horarioMinimo = chegadaNoOrigem.plusMinutes(waitTime);
         if (e.getOriginDateTime().isBefore(horarioMinimo)) return;
 
-        // Espera = tempo entre nossa chegada e a partida deste voo
         double espera = Duration.between(chegadaNoOrigem, e.getOriginDateTime()).toMinutes();
         double dist = distTo.get(originIcao) + espera + e.getWeight();
 
         if (distTo.getOrDefault(destinationIcao, Double.POSITIVE_INFINITY) > dist) {
             distTo.put(destinationIcao, dist);
             edgeTo.put(destinationIcao, e);
-            arrivalTime.put(destinationIcao, e.getDestinationDateTime()); // ← atualiza chegada
+            arrivalTime.put(destinationIcao, e.getDestinationDateTime()); 
             if (pq.contains(destinationIcao))
                 pq.decreaseValue(destinationIcao, dist);
             else

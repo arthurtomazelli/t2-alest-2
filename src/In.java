@@ -1,4 +1,5 @@
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,5 +29,14 @@ public class In {
             e.printStackTrace();
         }
         return data;
+    }
+
+    public static String getBasePath() {
+        try {
+            String workingDir = System.getProperty("user.dir");
+            return new File(workingDir, "../resources/in").getCanonicalPath() + File.separator;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not resolve resources path", e);
+        }
     }
 }

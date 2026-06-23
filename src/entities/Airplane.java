@@ -1,6 +1,6 @@
 package entities;
 
-public class Airplane {
+public class Airplane implements Printable{
     private String icao;
     private String iata;
     private String model;

@@ -1,3 +1,5 @@
+import java.io.File;
+import java.io.IOException;
 import java.sql.Time;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -12,15 +14,20 @@ import java.util.Scanner;
 import entities.Airplane;
 import entities.Airport;
 import entities.Company;
+import entities.Printable;
 
 public class App {
+    private static final int COMPANY = 0;
+    private static final int AIRPLANE = 1;
+    private static final int AIRPORT = 2;
+
     private In in;
-    private List<String[]> flightList;
     private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private WeightedTemporalDigraph graph;
     private Map<String, Airplane> airplanes;
     private Map<String, Company> companies;
     private Map<String, Airport> airports;
+    private List<String[]> flightList;
+    private WeightedTemporalDigraph graph;
     private Map<String, Integer> grau;
     private Map<String, Integer> topFiveHubs;
     private Scanner sc = new Scanner(System.in);
@@ -30,24 +37,18 @@ public class App {
         companies = new HashMap<>();
         airplanes = new HashMap<>();
         airports = new HashMap<>();
-
-        companies = populateMap("../resources/cias.csv", ";", companies, 0);
-        airplanes = populateMap("../resources/aeronaves.csv", ";", airplanes, 1);
-        airports = populateMap("../resources/aerodromos.csv", ";", airports, 2);
-
-        /* companies = populateMap("./resources/cias.csv", ";", companies, 0);
-        airplanes = populateMap("./resources/aeronaves.csv", ";", airplanes, 1);
-        airports = populateMap("./resources/aerodromos.csv", ";", airports, 2); */
-
         graph = new WeightedTemporalDigraph();
-        flightList = in.readCSV("../resources/voos_mar2026.csv", ",");
+        grau = new HashMap<>();
+        topFiveHubs = new HashMap<>();
+        
+        companies = populateMap(In.getBasePath() + "cias.csv", ";", companies, COMPANY);
+        airplanes = populateMap(In.getBasePath() + "aeronaves.csv", ";", airplanes, AIRPLANE);
+        airports  = populateMap(In.getBasePath() + "aerodromos.csv", ";", airports, AIRPORT);
+        flightList = in.readCSV(In.getBasePath() + "voos_mar2026.csv", ",");
 
         populateGraph(flightList, graph, formatter);
         System.out.println(graph.size());
         
-        grau = new HashMap<>();
-        topFiveHubs = new HashMap<>();
-
         calculateTotalDegree();
         calculateTopFiveHubs();
         solicitarVoo();
@@ -57,29 +58,16 @@ public class App {
     public <T> Map<String, T> populateMap(String path, String splitChar, Map<String, T> map, int c) {
         List<String[]> list = in.readCSV(path, splitChar);
 
-        switch (c) {
-            case 0 -> {
-                int cont = 0;
-                for (String[] strings : list) {
-                    if (!strings[0].equals("N/I")) {
-                        map.put(strings[0], (T) new Company(strings[0], strings[1], strings[2], strings[3]));
-                        if (cont == 0) {
-                            System.out.println(map.keySet());
-                        }
-                        cont++;
-                    }
-                }
+        for(String[] strings : list){
+            if(strings[0].equals("N/I")){
+                continue;
             }
-            case 1 -> {
-                for (String[] strings : list) {
-                    map.put(strings[0], (T) new Airplane(strings[0], strings[1], strings[2], strings[3]));
-                }
-            }
-            case 2 -> {
-                for (String[] strings : list) {
-                    map.put(strings[0], (T) new Airport(strings[0], strings[1], strings[2], strings[3], strings[4],
-                            strings[5], strings[6], strings[7], strings[8]));
-                }
+
+            switch (c) {
+                case 0 -> map.put(strings[0], (T) new Company(strings[0], strings[1], strings[2], strings[3]));
+                case 1 -> map.put(strings[0], (T) new Airplane(strings[0], strings[1], strings[2], strings[3]));
+                case 2 -> map.put(strings[0], (T) new Airport(strings[0], strings[1], strings[2], strings[3], 
+                    strings[4],strings[5], strings[6], strings[7], strings[8]));
             }
         }
 
@@ -180,9 +168,9 @@ public class App {
     public String getValidIcao(String type){
         while(true){
             System.out.print("Digite um aeroporto de " + type + " (código ICAO): \n-> ");
-            String icao = sc.nextLine();
+            String icao = sc.nextLine().toUpperCase();
             if (!graph.vertices.contains(icao)) {
-                System.out.println("ICAO não encontrado");
+                System.out.println("ERRO: ICAO '" + icao +"' não encontrado");
             } else {
                 System.out.println();
                 return icao; 
@@ -214,11 +202,11 @@ public class App {
         if (dij.hasPathTo(icaoDestination)) {
 
             LinkedList<Edge> path = (LinkedList<Edge>) dij.pathTo(icaoDestination);
-            String text = "conexão";
-            if(path.size() > 2){
-                text = "conexões";
-            }
-            System.out.println("Menor rota (" + (path.size() - 1) + " " + text + "):");
+
+            String icaoOrigin = path.getFirst().getOrigin();
+            String text = path.size() == 2 ? "conexão" : "conexões";
+
+            System.out.println("Menor rota de '" + icaoOrigin + "' para '" + icaoDestination + "' (" + (path.size() - 1) + " " + text + "):");
 
             for(int i = 0; i < path.size(); i++){
                 Edge currentFlight = path.get(i);
@@ -234,7 +222,7 @@ public class App {
             System.out.println("Custo total: " + dij.distTo(icaoDestination));
 
         } else {
-            System.out.println("SEM CAMINHO");
+            System.out.println("ERRO: SEM CAMINHO");
         }
     }
 
@@ -243,14 +231,17 @@ public class App {
             System.out.print("Qual dos hubs você deseja eliminar? ");
             String hubEliminado = sc.nextLine();
             if (hubEliminado.equals(icaoOrigin) || hubEliminado.equals(icaoDestination)) {
-                System.out.println("Não é possível eliminar um aeroporto fornecido");
+                System.out.println("ERRO: Não é possível eliminar um aeroporto fornecido");
+                System.out.println();
                 continue;
             }
             if(removeHub(hubEliminado)){
-                System.out.println("Hub " + hubEliminado + " removido com sucesso.");
+                System.out.println("Hub '" + hubEliminado + "' removido com sucesso.");
+                System.out.println();
                 return;
             } else {
-                System.out.println("Hub " + hubEliminado + " não é um dos 5 hubs.");
+                System.out.println("ERRO: Hub '" + hubEliminado + "' não é um dos 5 hubs.");
+                System.out.println();
                 continue;
             }
         }
@@ -264,7 +255,7 @@ public class App {
                 System.out.println();
                 return parseDateTime(dateString); 
             } catch (Exception e) {
-                System.out.println("Data inválida");
+                System.out.println("ERRO: Data inválida");
                 System.out.println();
             }             
         }
@@ -290,8 +281,8 @@ public class App {
         LocalDateTime departureDateTime = currentFlight.getOriginDateTime();
         LocalDateTime arrivalDateTime = currentFlight.getDestinationDateTime();
         String flightNumber = currentFlight.getFlightNumber();
-        Airplane airplane = airplanes.get(currentFlight.getIcaoPlane());
-        Company company = companies.get(currentFlight.getIcaoCompany());
+        String airplane = getPrintOrIcao(airplanes, currentFlight.getIcaoPlane());
+        String company = getPrintOrIcao(companies, currentFlight.getIcaoCompany());
         double flightTime = currentFlight.getWeight();
         int flightTimeHours = (int) flightTime / 60;
         int flightTimeMinutes = (int) flightTime % 60;
@@ -301,12 +292,17 @@ public class App {
         System.out.println("DATA E HORÁRIO PARTIDA: " + departureDateTime.format(formatter));
         System.out.println("DATA E HORÁRIO CHEGADA: " + arrivalDateTime.format(formatter));
         System.out.println("TEMPO DE VÔO: " + flightTimeHours + "h" + " " + flightTimeMinutes + " min");
-        System.out.println("CIA. Aérea: " + company.print());
+        System.out.println("CIA. Aérea: " + company);
         System.out.println("Número Vôo: " + flightNumber);
-        System.out.println("Aeronave: " + airplane.print());
+        System.out.println("Aeronave: " + airplane);
         if(nextFlightDateTime != null){
             double waitTime = Duration.between(currentFlight.getDestinationDateTime(), nextFlightDateTime).toMinutes();
             System.out.println("TEMPO DE PERMANÊNCIA: " + waitTime + " minutos");
         }
+    }
+
+    public <T extends Printable> String getPrintOrIcao(Map<String, T> map, String icao){
+        T result = map.get(icao);
+        return result == null ? icao : result.print();
     }
 }   
