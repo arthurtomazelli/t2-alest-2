@@ -207,7 +207,8 @@ public class App {
             String text = path.size() == 2 ? "conexão" : "conexões";
 
             System.out.println("Menor rota de '" + icaoOrigin + "' para '" + icaoDestination + "' (" + (path.size() - 1) + " " + text + "):");
-
+            
+            int totalFlightTime = 0;
             for(int i = 0; i < path.size(); i++){
                 Edge currentFlight = path.get(i);
                 LocalDateTime nextFlightDateTime = null;
@@ -216,8 +217,13 @@ public class App {
                     nextFlightDateTime = path.get(i + 1).getOriginDateTime();
                 }
                 
-                printFlightData(currentFlight, nextFlightDateTime);
+                totalFlightTime += (int) printFlightData(currentFlight, nextFlightDateTime);
+                
+                System.out.println();
             }
+            int flightTimeHours = (int) totalFlightTime / 60;
+            int flightTimeMinutes = (int) totalFlightTime % 60;
+            System.out.println("Tempo de vôo total: " + flightTimeHours + "h" + " " + flightTimeMinutes + " min");
 
             System.out.println("Custo total: " + dij.distTo(icaoDestination));
 
@@ -275,7 +281,7 @@ public class App {
         return LocalDateTime.parse(localDateTime.replace("\"", ""), formatter);
     }
 
-    public void printFlightData(Edge currentFlight, LocalDateTime nextFlightDateTime){
+    public double printFlightData(Edge currentFlight, LocalDateTime nextFlightDateTime){
         String origin = currentFlight.getOrigin();
         String destination = currentFlight.getDestination();
         LocalDateTime departureDateTime = currentFlight.getOriginDateTime();
@@ -299,6 +305,7 @@ public class App {
             double waitTime = Duration.between(currentFlight.getDestinationDateTime(), nextFlightDateTime).toMinutes();
             System.out.println("TEMPO DE PERMANÊNCIA: " + waitTime + " minutos");
         }
+        return flightTime;
     }
 
     public <T extends Printable> String getPrintOrIcao(Map<String, T> map, String icao){
